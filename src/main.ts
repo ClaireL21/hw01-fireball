@@ -15,7 +15,9 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 const controls = {
   tesselations: 2,
   color: [230, 100, 25] as [number, number, number],
-  'Load Scene': loadScene, // A function pointer, essentially
+ // 'Load Scene': loadScene, // A function pointer, essentially
+  speed: 2,
+  'Reset': reset, // A function pointer, essentially
   //restore: -1,
   // time: 0,
 };
@@ -23,9 +25,11 @@ const controls = {
 let icosphere: Icosphere;
 let square: Square;
 //let cube: Cube;
-let prevTesselations: number = 5;
+let prevTesselations: number = 2;
+//let prevSpeed: number = 1;
 let time: GLfloat = 0;
 let isCube: Boolean = true;
+let gui = new DAT.GUI();
 //let cameraLook: vec3;
 
 function loadScene() {
@@ -38,6 +42,22 @@ function loadScene() {
   isCube = !isCube;
 }
 
+function reset() {
+  icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, 2);
+  icosphere.create();
+  
+  // gui = new DAT.GUI();
+  // gui.addColor(controls, 'color');
+  // gui.add(controls, 'tesselations', 0, 4).step(1);
+  // gui.add(controls, 'Load Scene');
+  // gui.add(controls, 'speed', 0, 4).step(1);
+  // gui.add(controls, 'Reset');
+  controls.speed = 2;
+  controls.tesselations = 2;
+  controls.color = [230, 100, 25];
+  gui.updateDisplay();
+}
+ 
 function main() {
   // Initial display for framerate
   const stats = Stats();
@@ -48,10 +68,12 @@ function main() {
   document.body.appendChild(stats.domElement);
 
   // Add controls to the gui
-  const gui = new DAT.GUI();
+  //const gui = new DAT.GUI();
   gui.addColor(controls, 'color');
   gui.add(controls, 'tesselations', 0, 4).step(1);
-  gui.add(controls, 'Load Scene');
+ // gui.add(controls, 'Load Scene');
+  gui.add(controls, 'speed', 0, 4).step(1);
+  gui.add(controls, 'Reset');
   //gui.updateDisplay();
 
   // get canvas and webgl context
@@ -70,7 +92,7 @@ function main() {
   const camera = new Camera(vec3.fromValues(0, 0, 5), vec3.fromValues(0, 0, 0));
 
   const renderer = new OpenGLRenderer(canvas);
-  renderer.setClearColor(0.2, 0.2, 0.2, 1);
+  renderer.setClearColor(0, 0, 0, 1);   // set background to black
   gl.enable(gl.DEPTH_TEST);
 
   const lambert = new ShaderProgram([
@@ -86,27 +108,20 @@ function main() {
     renderer.clear();
     lambert.setTime(time);
 
-    //cameraLook = camera.position;
-    //lambert.setCameraLook(cameraLook);
-
     if(controls.tesselations != prevTesselations)
     {
       prevTesselations = controls.tesselations;
-      // cube = new Cube(vec3.fromValues(0, 0, 0));
-      // cube.create();
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
     }
 
     lambert.setGeometryColor(vec4.fromValues(controls.color[0] / 255, controls.color[1] / 255, controls.color[2] / 255, 1));
-    
+    lambert.setSpeed(controls.speed);
 
     const obj = isCube ? square : icosphere;
 
     renderer.render(camera, lambert, [
       obj,
-      // square,
-      //cube,
     ]);
     stats.end();
     time++;

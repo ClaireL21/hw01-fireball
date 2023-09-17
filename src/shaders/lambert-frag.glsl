@@ -22,6 +22,7 @@ in vec4 fs_Pos;
 
 uniform float u_Time;
 uniform vec4 u_Look;
+uniform float u_Speed;
 
 out vec4 out_Col; // This is the final output color that you will see on your
                   // screen for the pixel that is currently being processed.
@@ -148,73 +149,95 @@ float easeInOutCubic(float x) {
     return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0;
 }
 
+float smootherstep(float edge0, float edge1, float y) {
+    float x = clamp((y - edge0) / (edge1 - edge0), 0.f, 1.f);
+    return x * x * x * (x * (x * 6.f - 15.f) + 10.f); 
+   // return x * x * (3.f - 2.f * x); 
+}
+
+float sawtoothWave(float x, float freq, float amplitude) {
+    return (x * freq - floor(x * freq)) * amplitude;
+}
+
+float freq() {
+    if (u_Speed < 1.f) {
+        return 5000.f;
+    } else if (u_Speed < 2.f) {
+        return 3500.f;
+    } else if (u_Speed < 3.f) {
+        return 2000.f;
+    } else if (u_Speed < 4.f) {
+        return 800.f;
+    } else {
+        return 300.f;
+    }
+}
+
 void main()
 {
     // Material base color (before shading)
-        vec4 diffuseColor = u_Color;
-        // vec4 vector1 = u_Look; // - [0, 0, 0,] which is origin of icosphere
-        // vec4 vector2 = fs_Nor;
+    vec4 diffuseColor = u_Color;
 
-        float time = sin(u_Time * 0.08f);
-        // float noise = perlinNoise3D(fs_Pos.xyz + 0.1f * time);
-        float fbmNoise = fbm(fs_Pos.xyz);
-        // diffuseColor += 0.5f * vec4(noise - time, fbmNoise - fbmNoise * noise, fbmNoise, 1.f);
+    float time = sin(u_Time * 0.08f);
+    // float noise = perlinNoise3D(fs_Pos.xyz + 0.1f * time);
+    float fbmNoise = fbm(fs_Pos.xyz);
+    float speed = freq();
+    // if (u_Speed < 1.f) {
+    //     speed = 1.f;
+    // } else if (u_Speed < 2.f) {
+    //     speed = 1000.f;
+    // } else if (u_Speed < 3.f) {
+    //     speed = 300.f;
+    // } else if (u_Speed < 4.f) {
+    //     speed = 100.f;
+    // } else {
+    //     speed = 40.f;
+    // }
 
-        //vec3 biasedPos = vec3(bias(fs_Pos.x, 0.f), fs_Pos.y, fs_Pos.z);
-        float noise = noise(fs_Pos.xyz * 1.5f * sin(u_Time / 1000.f));
-        
-        diffuseColor += 0.5f * vec4(noise, noise - bias(0.5f * fbmNoise * noise, 0.7f), noise - bias(0.5f * fbmNoise * noise, 0.7f), noise);
-        
-        // Trying things with angles:
-        vec3 colorA = diffuseColor.xyz - vec3(0.7f, 0.7f, 0.7f);
-        vec3 colorB = diffuseColor.xyz + vec3(1.f, 1.f, 1.f);
-        
-        // float dotProd = dot(vector1, vector2) / (length(vector1) * length(vector2));
-        float angle = acos(dot(normalize(vec3(fs_Nor)), normalize(vec3(u_Look))));;
-        angle /= 6.28f; // PI
-        float noisyAngle = easeInOutCubic(0.9f * bias(angle, 0.6f));
-        vec3 noisyColor = mix(colorA, colorB, noisyAngle);
-        diffuseColor = vec4(noisyColor, 1.f);
+    float noise = noise(fs_Pos.xyz * 1.5f * sin(u_Time / speed));
+    noise = sawtoothWave(noise, 3.f, 1.2f) * noise;
+    
+    diffuseColor += 0.5f * vec4(noise, noise - bias(0.5f * fbmNoise * noise, 0.7f), noise - bias(0.5f * fbmNoise * noise, 0.7f), noise);
+    
+    // Trying things with angles:
+    vec3 colorA = diffuseColor.xyz - vec3(0.5f, 0.5f, 0.5f);
+    vec3 colorB = diffuseColor.xyz + vec3(0.1f, 0.4f, 0.1f);
+    vec3 colorCore = diffuseColor.xyz + vec3(0.01f, 0.04f, 0.01f);
 
+    //vec3 colorC = diffuseColor.xyz + vec3(0.05f, 0.1f, 0.05f);
+    
+    float angle = acos(dot(normalize(vec3(fs_Nor)), normalize(vec3(u_Look))));;
+    angle /= 6.28f; // PI
+    //float noisyAngle = easeInOutCubic(0.9f * bias(angle, 0.6f));
 
-        //angle /= 6.28f; // PI
+    float noisyAngleAC = easeInOutCubic(0.8f * bias(angle, 0.7f));
+    // smootherstep bounds keeps center yellow part of the flame bounded
+        // an interval of smootherstep(0.f, 0.5f) allows it take the entirety of the flame
+        // 0.5, 1.f keeps it concentrated in the center
+    // bias helps control the bounds
+    vec3 noisyColorAC = mix(colorA, colorB, bias(smootherstep(0.2f, 0.6f, noisyAngleAC), 0.4f)); //smoothstep2(0.5f, 1.f, noisyAngleAC)
+    //vec3 noisyColorCore = mix(noisyColorAC, colorCore, smootherstep(0.5f, 0.8f, noisyAngleAC)); //smoothstep2(0.5f, 1.f, noisyAngleAC)
 
+    //vec3 noisyColor = mix(noisyColorAC, colorB, noisyAngle);
+    diffuseColor = vec4(noisyColorAC, 1.f) ;
 
-       // diffuseColor -= 100.f * u_Look;
+    // Calculate the diffuse term for Lambert shading
+    float diffuseTerm = dot(normalize(fs_Nor), normalize(fs_LightVec));
+    // Avoid negative lighting values
+    // diffuseTerm = clamp(diffuseTerm, 0, 1);
 
-        //diffuseColor -= 100.f * vec4(u_Look[0], u_Look[1], u_Look[2], 0.f);
-        // if (angle < 0.25f) {
-        //     diffuseColor = vec4(colorB[0], colorB[1], colorB[2], diffuseColor[3]);
-        // }
+    // float angle = acos(dot(normalize(vec3(fs_Nor)), normalize(vec3(u_Look))));;
+    // angle /= 6.28f; // PI
+    // float noisyAngle = easeInOutCubic(0.9f * bias(angle, 0.6f));
+    // vec3 noisyColor = mix(colorA, colorB, noisyAngle);
+    // diffuseColor = vec4(noisyColor, 1.f);
 
-        // colorB = colorA * multiplier -- multiplier is random value (procedurally darker color)
-        // weight --> btwn 0 and 1
-        // weight = bias(weight, (predetermined factor like 0.6 to lean toward b))
-        // can make angle a single scalar
-            // calculate max angle and then divide by max angle
-        // manipulate 
-        // converting 3d value into a single value --> multiply all 3 values, or find magnitude
-            // add them all up, minus them all up
-       // vec3 interpColor = mix(colorA, colorB, weight)
-        // saturation -  for darker
-        // bias would make middle bigger relative to outside
-        // check: bias for 0.5 upwards, bias below 0.5 downwards
-        //interpolated_color = mix(colorA, colorB, weight) ; weight is a product of noise. Middle to always to be lighter: One part of weight needs to be angle between camera and sphere
-        // weight is between 0 and 1
+    float ambientTerm = 0.9;
 
-        //diffuseColor += 0.5f * vec4(noise - time * noise, 0.f, 0.f, 0.f);
+    float lightIntensity = diffuseTerm + ambientTerm;   //Add a small float value to the color multiplier
+                                                        //to simulate ambient lighting. This ensures that faces that are not
+                                                        //lit by our point light are not completely black.
 
-        // Calculate the diffuse term for Lambert shading
-        float diffuseTerm = dot(normalize(fs_Nor), normalize(fs_LightVec));
-        // Avoid negative lighting values
-        // diffuseTerm = clamp(diffuseTerm, 0, 1);
-
-        float ambientTerm = 0.9;
-
-        float lightIntensity = diffuseTerm + ambientTerm;   //Add a small float value to the color multiplier
-                                                            //to simulate ambient lighting. This ensures that faces that are not
-                                                            //lit by our point light are not completely black.
-
-        // Compute final shaded color
-        out_Col = vec4(diffuseColor.rgb, diffuseColor.a);
+    // Compute final shaded color
+    out_Col = vec4(diffuseColor.rgb, diffuseColor.a);
 }

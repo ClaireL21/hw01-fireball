@@ -31,6 +31,7 @@ out vec4 fs_Col;            // The color of each vertex. This is implicitly pass
 out vec4 fs_Pos;
 
 uniform float u_Time;
+uniform float u_Speed;
 
 //uniform vec4 u_Look;
 
@@ -155,64 +156,89 @@ float noise(vec3 vec) {
     return total;
 }
 
+float powerCurve(float x, float a, float b) {
+    float k = pow(a + b, a + b) / (pow(a, a) * pow(b, b));
+    return k * pow(x , a) * pow(1.0f - x, b);
+}
+
+float sawtoothWave(float x, float freq, float amplitude) {
+    return (x * freq - floor(x * freq)) * amplitude;
+}
+
+float easeInQuadratic(float t) {
+    return t;
+}
+
+float freq() {
+    if (u_Speed < 1.f) {
+        return 5000.f;
+    } else if (u_Speed < 2.f) {
+        return 3500.f;
+    } else if (u_Speed < 3.f) {
+        return 2000.f;
+    } else if (u_Speed < 4.f) {
+        return 800.f;
+    } else {
+        return 300.f;
+    }
+}
+
+
 void main()
 {
     fs_Col = vs_Col;                         // Pass the vertex colors to the fragment shader for interpolation
     fs_Pos = vs_Pos;
-    // want mini flames to go up
 
+    // controlling the speed of the flame
+    // float speed;
+    // if (u_Speed < 1.f) {
+    //     speed = 5000.f;
+    // } else if (u_Speed < 2.f) {
+    //     speed = 1000.f;
+    // } else if (u_Speed < 3.f) {
+    //     speed = 300.f;
+    // } else if (u_Speed < 4.f) {
+    //     speed = 100.f;
+    // } else {
+    //     speed = 40.f;
+    // }
+    float speed = freq();
+    float noisyValue = noise(fs_Pos.xyz * sin(u_Time / speed));
 
-    // vec3 offset = vec3(2.f * sin(fs_Pos.x), 0.f, 0.f);
+    // noisyValue = sawtoothWave(noisyValue, 0.9f, 1.2f) * noisyValue;
 
-    // fs_Pos.x += offset.x;
-    // fs_Pos.y += offset.y;
-    // fs_Pos.z += offset.z;
-
-    
-    // fs_Pos.x = bias(fs_Pos.x, 0.9f);
-    // fs_Pos.y = gain(fs_Pos.x, 0.2f);
-    // fs_Pos.z = bias(fs_Pos.x, 0.2f);
-    //fs_Pos.x *= gain(noise(fs_Pos.xyz), 0.8f);
-
-    float noisyValue = noise(fs_Pos.xyz * sin(u_Time / 1000.f));
    
     // Making the flame stretch, with a tail at the top
     if (fs_Pos.y < 0.f) {
-        fs_Pos.y *= 1.3f;
+        //fs_Pos.y *= 1.25f;
+        fs_Pos.y *= easeInQuadratic(sawtoothWave(0.9f * easeInQuadratic(abs(fs_Pos.y)), 0.68f, 2.f)); //1.25f;
     }
     if (fs_Pos.y < -0.7f) {
         fs_Pos.y *= bias(abs(fs_Pos.y) + 0.1f * noisyValue, 0.2f);
     }
-    // if (fs_Pos.y < -0.1f) {
-    //     fs_Pos.y *= 1.5f;
-    // }
-    // if (fs_Pos.x < 0.f) {
-    //     fs_Pos.x *= 2.f;
-    // }
 
-    fs_Pos.x *= bias(noise(fs_Pos.xyz * sin(u_Time / 1000.f)), 0.8f);
-    fs_Pos.y *= bias(noise(fs_Pos.xyz * sin(u_Time / 1000.f)), 0.8f);
-    fs_Pos.z *= bias(noise(fs_Pos.xyz * sin(u_Time / 1000.f)), 0.8f);
+    // making the flames flicker
+    // lower bias value makes them shrink and explode more
+    // higher bias value makes them flicker at the tail more
+    fs_Pos.x *= bias(noisyValue, 0.7f);
+    //fs_Pos.y *= bias(noisyValue, 0.3f);
+    fs_Pos.y *= powerCurve(bias(noisyValue, 0.3f), 1.8f, 0.3f);
+    fs_Pos.z *= bias(noisyValue, 0.7f);
 
-    // second layer of finer surface level detail?
-    fs_Pos.x *= sin(5.f * fbm(fs_Pos.xyz)); // + bias(sin(0.1f * fbm(fs_Pos.xyz)), 0.1f);
-    fs_Pos.y *= sin(5.f * fbm(fs_Pos.xyz)); // * bias(2.0f * fs_Pos.y, 0.9f) *
+    // second layer of noise to define shape better
+    fs_Pos.x *= sin(5.f * fbm(fs_Pos.xyz));
+    fs_Pos.y *= sin(5.f * fbm(fs_Pos.xyz));
     fs_Pos.z *= sin(5.f * fbm(fs_Pos.xyz));
 
+    // second layer of noise to define shape better
+    // fs_Pos.x *= sin(5.f * fbm(fs_Pos.xyz));
+    // fs_Pos.y *= sin(5.f * fbm(fs_Pos.xyz));
+    // fs_Pos.z *= sin(5.f * fbm(fs_Pos.xyz));
 
-    // fs_Pos.y *= worley(fs_Pos.xyz, 0.4f * sin(u_Time / 3000.f));;
-    // fs_Pos.z *= worley(fs_Pos.xyz, 0.4f * sin(u_Time / 3000.f));;
-
-   // float noise = fbm(fs_Pos.xyz * sin(u_Time / 1000.f)); //worley(fs_Pos.xyz, 5.f * sin(u_Time / 1000.f));
-
-    // fs_Pos.x *= worley(fs_Pos.xyz, 0.4f * sin(u_Time / 3000.f));
-    // fs_Pos.y *= worley(fs_Pos.xyz, 0.4f * sin(u_Time / 3000.f));;
-    // fs_Pos.z *= worley(fs_Pos.xyz, 0.4f * sin(u_Time / 3000.f));;
-
-    // fs_Pos.x *= noise;
-    // fs_Pos.y *= noise;
-    // fs_Pos.z *= noise;
-
+    // scale flame down
+    fs_Pos.x *= 0.7f;
+    fs_Pos.y *= 0.7f;
+    fs_Pos.z *= 0.7f;
 
 
     mat3 invTranspose = mat3(u_ModelInvTr);
