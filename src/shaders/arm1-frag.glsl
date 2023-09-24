@@ -181,7 +181,7 @@ void main()
     float time = sin(u_Time * 0.08f);
     float fbmNoise = fbm(fs_Pos.xyz);
     float speed = freq();
-    
+
     float noise = noise(fs_Pos.xyz * 1.5f * sin(u_Time / speed));
     noise = sawtoothWave(noise, 3.f, 1.2f) * noise;
     
@@ -190,16 +190,14 @@ void main()
     // Trying things with angles:
     vec3 colorA = diffuseColor.xyz - vec3(0.5f, 0.5f, 0.5f);
     vec3 colorB = diffuseColor.xyz + vec3(0.02f, 0.04f, 0.02f);
+
     vec3 colorCore = diffuseColor.xyz + vec3(0.01f, 0.04f, 0.01f);
-    
+
     float angle = acos(dot(normalize(vec3(fs_Nor)), normalize(vec3(u_Look))));;
     angle /= 6.28f;
 
     float noisyAngleAC = easeInOutCubic(0.8f * bias(angle, 0.7f));
 
-    // smootherstep bounds keeps center yellow part of the flame bounded
-        // an interval of smootherstep(0.f, 0.5f) allows it take the entirety of the flame
-        // 0.5, 1.f keeps it concentrated in the center
     // bias helps control the bounds
     vec3 noisyColorAC = mix(colorB, colorA, bias(smootherstep(0.2f, 0.6f, noisyAngleAC), 0.4f)); 
     diffuseColor = vec4(noisyColorAC, 1.f) ;

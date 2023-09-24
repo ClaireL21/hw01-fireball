@@ -114,13 +114,6 @@ class ShaderProgram {
     }
   }
 
-  // setCameraLook(look: vec3) {
-  //   this.use();
-  //   if (this.unifLook !== -1) {
-  //     gl.uniform3fv(this.unifLook, look);
-  //   }
-  // }
-
   draw(d: Drawable) {
     this.use();
 

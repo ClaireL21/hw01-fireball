@@ -139,9 +139,8 @@ float noise(vec3 vec) {
     float amplitude = 5.0f;
     float freq = 0.2f;
     
-    float total = amplitude * sin(freq * sin(fbm(vec.xyz) + 0.5f));//amplitude * sin(freq * input.x);
+    float total = amplitude * sin(freq * sin(fbm(vec.xyz) + 0.5f));
 
-    //float total = amplitude * sin(freq * bias(sin(worley(vec.xyz, 5.f) + 0.5f), 0.3f));//amplitude * sin(freq * input.x);
     return total;
 }
 
@@ -179,31 +178,9 @@ void main()
     vec4 diffuseColor = u_Color;
 
     float time = sin(u_Time * 0.08f);
-    float fbmNoise = fbm(fs_Pos.xyz);
-    float speed = freq();
-    
-    float noise = noise(fs_Pos.xyz * 1.5f * sin(u_Time / speed));
-    noise = sawtoothWave(noise, 3.f, 1.2f) * noise;
-    
-    diffuseColor += 0.5f * vec4(noise, noise - bias(0.5f * fbmNoise * noise, 0.7f), noise - bias(0.5f * fbmNoise * noise, 0.7f), noise);
-    
-    // Trying things with angles:
-    vec3 colorA = diffuseColor.xyz - vec3(0.5f, 0.5f, 0.5f);
-    vec3 colorB = diffuseColor.xyz + vec3(0.02f, 0.04f, 0.02f);
-    vec3 colorCore = diffuseColor.xyz + vec3(0.01f, 0.04f, 0.01f);
-    
-    float angle = acos(dot(normalize(vec3(fs_Nor)), normalize(vec3(u_Look))));;
-    angle /= 6.28f;
-
-    float noisyAngleAC = easeInOutCubic(0.8f * bias(angle, 0.7f));
-
-    // smootherstep bounds keeps center yellow part of the flame bounded
-        // an interval of smootherstep(0.f, 0.5f) allows it take the entirety of the flame
-        // 0.5, 1.f keeps it concentrated in the center
-    // bias helps control the bounds
-    vec3 noisyColorAC = mix(colorB, colorA, bias(smootherstep(0.2f, 0.6f, noisyAngleAC), 0.4f)); 
-    diffuseColor = vec4(noisyColorAC, 1.f) ;
-
+    // float noise = perlinNoise3D(fs_Pos.xyz + 0.1f * time);
+   
+    diffuseColor += vec4(0.5f, 0.8f, 0.5f, 0.f);
     // Calculate the diffuse term for Lambert shading
     float diffuseTerm = dot(normalize(fs_Nor), normalize(fs_LightVec));
 

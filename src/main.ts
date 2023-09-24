@@ -3,7 +3,10 @@ import {vec4} from 'gl-matrix';
 const Stats = require('stats-js');
 import * as DAT from 'dat.gui';
 import Icosphere from './geometry/Icosphere';
+import BgSphere from './geometry/BgSphere';
+
 import Square from './geometry/Square';
+import Rectangle from './geometry/Rectangle';
 import Cube from './geometry/Cube';
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
@@ -14,7 +17,7 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
   tesselations: 2,
-  color: [230, 100, 25] as [number, number, number],
+  color: [188, 103, 0] as [number, number, number],
  // 'Load Scene': loadScene, // A function pointer, essentially
   speed: 2,
   'Reset': reset, // A function pointer, essentially
@@ -24,6 +27,14 @@ const controls = {
 
 let icosphere: Icosphere;
 let square: Square;
+let rect: Rectangle;
+let bgIco: Icosphere;
+let eye1: Icosphere;
+let eye2: Icosphere;
+
+let arm1: Icosphere;
+let arm2: Icosphere;
+
 //let cube: Cube;
 let prevTesselations: number = 2;
 //let prevSpeed: number = 1;
@@ -39,22 +50,32 @@ function loadScene() {
   // cube.create();
   square = new Square(vec3.fromValues(0, 0, 0));
   square.create();
+  rect = new Rectangle(vec3.fromValues(0, 0, 0));
+  rect.create();
+  bgIco = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
+  bgIco.create();
+
+  eye1 = new Icosphere(vec3.fromValues(0, 0, 0), 0.5, controls.tesselations);
+  eye1.create();
+
+  eye2 = new Icosphere(vec3.fromValues(0, 0, 0), 0.5, controls.tesselations);
+  eye2.create();
+
+  arm1 = new Icosphere(vec3.fromValues(0, 0, 0), 0.5, controls.tesselations);
+  arm1.create();
+
+  arm2 = new Icosphere(vec3.fromValues(0, 0, 0), 0.5, controls.tesselations);
+  arm2.create();
+
   isCube = !isCube;
 }
 
 function reset() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, 2);
   icosphere.create();
-  
-  // gui = new DAT.GUI();
-  // gui.addColor(controls, 'color');
-  // gui.add(controls, 'tesselations', 0, 4).step(1);
-  // gui.add(controls, 'Load Scene');
-  // gui.add(controls, 'speed', 0, 4).step(1);
-  // gui.add(controls, 'Reset');
   controls.speed = 2;
   controls.tesselations = 2;
-  controls.color = [230, 100, 25];
+  controls.color = [188, 103, 0];
   gui.updateDisplay();
 }
  
@@ -68,13 +89,10 @@ function main() {
   document.body.appendChild(stats.domElement);
 
   // Add controls to the gui
-  //const gui = new DAT.GUI();
   gui.addColor(controls, 'color');
   gui.add(controls, 'tesselations', 0, 4).step(1);
- // gui.add(controls, 'Load Scene');
   gui.add(controls, 'speed', 0, 4).step(1);
   gui.add(controls, 'Reset');
-  //gui.updateDisplay();
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -100,6 +118,30 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/lambert-frag.glsl')),
   ]);
 
+  const bgShader = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/star-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/star-frag.glsl')),
+  ]);
+
+  const eyeShader = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/eye1-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/eye1-frag.glsl')),
+  ]);
+
+  const eyeShader2 = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/eye2-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/eye2-frag.glsl')),
+  ]);
+
+  const armShader1 = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/arm1-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/arm1-frag.glsl')),
+  ]);
+
+  const armShader2 = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/arm2-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/arm2-frag.glsl')),
+  ]);
   // This function will be called every frame
   function tick() {
     camera.update();
@@ -107,22 +149,66 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     lambert.setTime(time);
+    bgShader.setTime(time);
+    eyeShader.setTime(time);
+    eyeShader2.setTime(time);
+    armShader1.setTime(time);
+    armShader2.setTime(time);
 
     if(controls.tesselations != prevTesselations)
     {
       prevTesselations = controls.tesselations;
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
+
+      bgIco = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
+      bgIco.create();
+      
     }
 
     lambert.setGeometryColor(vec4.fromValues(controls.color[0] / 255, controls.color[1] / 255, controls.color[2] / 255, 1));
     lambert.setSpeed(controls.speed);
 
+    bgShader.setGeometryColor(vec4.fromValues(controls.color[0] / 255, controls.color[1] / 255, controls.color[2] / 255, 1));
+    bgShader.setSpeed(controls.speed);
+
+    eyeShader.setGeometryColor(vec4.fromValues(controls.color[0] / 255, controls.color[1] / 255, controls.color[2] / 255, 1));
+    eyeShader.setSpeed(controls.speed);
+
+    eyeShader2.setGeometryColor(vec4.fromValues(controls.color[0] / 255, controls.color[1] / 255, controls.color[2] / 255, 1));
+    eyeShader2.setSpeed(controls.speed);
+
+    armShader1.setGeometryColor(vec4.fromValues(controls.color[0] / 255, controls.color[1] / 255, controls.color[2] / 255, 1));
+    armShader1.setSpeed(controls.speed);
+
+    armShader2.setGeometryColor(vec4.fromValues(controls.color[0] / 255, controls.color[1] / 255, controls.color[2] / 255, 1));
+    armShader2.setSpeed(controls.speed);
+
     const obj = isCube ? square : icosphere;
 
+    renderer.render(camera, bgShader, [
+      bgIco,
+    ]);
     renderer.render(camera, lambert, [
       obj,
     ]);
+
+    renderer.render(camera, eyeShader, [
+      eye1,
+    ]);
+
+    renderer.render(camera, eyeShader2, [
+      eye2,
+    ]);
+
+    renderer.render(camera, armShader1, [
+      arm1,
+    ]);
+    
+    renderer.render(camera, armShader2, [
+      arm2,
+    ]);
+    
     stats.end();
     time++;
 

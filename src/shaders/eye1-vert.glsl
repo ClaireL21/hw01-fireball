@@ -144,13 +144,10 @@ float gain (float g, float t) {
     }
 }
 
-// low-frequency, high-amplitude displacement
-// combination of sine functions
-// y = Asin(B(X + C)) + D
 float noise(vec3 vec) {
     float amplitude = 5.0f;
     float freq = 0.2f;
-    float total = amplitude * sin(freq * bias(sin(worley(vec.xyz, 5.f) + 0.5f), 0.3f)) ;
+    float total = amplitude * sin(freq * bias(sin(worley(vec.xyz, 5.f) + 0.5f), 0.3f)) ;//amplitude * sin(freq * input.x);
     return total;
 }
 
@@ -181,7 +178,6 @@ float freq() {
     }
 }
 
-
 void main()
 {
     fs_Col = vs_Col;                         // Pass the vertex colors to the fragment shader for interpolation
@@ -189,31 +185,14 @@ void main()
 
     float speed = freq();
     float noisyValue = noise(fs_Pos.xyz * sin(u_Time / speed));
-   
-    // Making the flame stretch, with a tail at the top
-    if (fs_Pos.y < 0.f) {
-        fs_Pos.y *= easeInQuadratic(sawtoothWave(0.88f * easeInQuadratic(abs(fs_Pos.y)), 0.68f, 2.f)); //1.25f;
-    }
-    if (fs_Pos.y < -0.7f) {
-        fs_Pos.y *= bias(abs(fs_Pos.y) + 0.1f * noisyValue, 0.2f);
-    }
 
-    // making the flames flicker
-    // lower bias value makes them shrink and explode more
-    // higher bias value makes them flicker at the tail more
-    fs_Pos.x *= bias(noisyValue, 0.7f);
-    fs_Pos.y *= powerCurve(bias(noisyValue, 0.3f), 0.8f, 0.3f);
-    fs_Pos.z *= bias(noisyValue, 0.7f);
+    fs_Pos.x *= 0.15f;
+    fs_Pos.y *= 0.15f;
+    fs_Pos.z *= 0.15f;
 
-    // second layer of noise to define shape better
-    fs_Pos.x *= sin(5.f * fbm(fs_Pos.xyz));
-    fs_Pos.y *= sin(5.f * fbm(fs_Pos.xyz));
-    fs_Pos.z *= sin(5.f * fbm(fs_Pos.xyz));
+    fs_Pos.x -= 0.2f;
+    fs_Pos.z += 0.55f;
 
-    // scale flame down
-    fs_Pos.x *= 0.7f;
-    fs_Pos.y *= 0.7f;
-    fs_Pos.z *= 0.7f;
 
     mat3 invTranspose = mat3(u_ModelInvTr);
     fs_Nor = vec4(invTranspose * vec3(vs_Nor), 0);          // Pass the vertex normals to the fragment shader for interpolation.
