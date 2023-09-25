@@ -186,6 +186,7 @@ function main() {
 
     const obj = isCube ? square : icosphere;
 
+    // render objects
     renderer.render(camera, bgShader, [
       bgIco,
     ]);
