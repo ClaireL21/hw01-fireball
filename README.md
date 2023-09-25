@@ -9,6 +9,8 @@ I used the bias function so that the flickering would happen more at the tail, a
 
 You can change the color, speed, and tesselations of the fireball character!
 
+[Live Demo](https://clairel21.github.io/hw01-fireball/)
+
 <img width="426" alt="thumb" src="https://github.com/ClaireL21/hw01-fireball/assets/102630261/9c597700-6204-4d8a-91a3-83174025ed0d">
 
 
